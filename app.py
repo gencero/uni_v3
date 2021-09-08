@@ -28,7 +28,7 @@ while True:
     try:
         while current_block == w3.eth.block_number:
             time.sleep(3)
-            print(f"Waiting on {current_block} at {w3.eth.block_number}")
+            print(f"{datetime.datetime.now()} --- Waiting on {current_block} at {w3.eth.block_number}")
 
         current_block = w3.eth.block_number
 
@@ -38,7 +38,7 @@ while True:
             q.dump_to_API_format()
         )
 
-        print("Ok block:", current_block)
+        print(f"{datetime.datetime.now()} --- Ok block:", current_block)
 
         ok_counter += 1
         if ok_counter > 100:
