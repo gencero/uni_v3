@@ -3,7 +3,9 @@ GQL_URL = "https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"
 
 WETH_ADDRESS = "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2"
 
-HTTP_URL = "https://thirsty-visvesvaraya:blunt-rented-stew-basin-urgent-salsa@nd-379-921-044.p2pify.com"
+#HTTP_URL = "https://thirsty-visvesvaraya:blunt-rented-stew-basin-urgent-salsa@nd-379-921-044.p2pify.com"
+#HTTP_URL = "http://trader5.freemyip.com:8545/node/CfYZ0KNteW0kTkmv/eth"
+HTTP_URL = "http://ortraderlast.freemyip.com:8545"
 
 #"https://distracted-noyce:dude-fleshy-mutual-dismay-lining-magma@nd-255-971-028.p2pify.com"
 
