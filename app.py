@@ -4,6 +4,7 @@ from constants import HTTP_URL
 from web3 import Web3
 import time
 import datetime
+import json
 
 
 print("Point a")
@@ -34,9 +35,13 @@ while True:
 
         q.get_prices()
 
-        data_submission.post_data(
-            q.dump_to_API_format()
-        )
+        d = q.dump_to_API_format()
+        with open('submission_data.json', 'w') as f:
+            json.dump(d, f)
+
+        #data_submission.post_data(
+        #    q.dump_to_API_format()
+        #)
 
         print(f"{datetime.datetime.now()} --- Ok block:", current_block)
 

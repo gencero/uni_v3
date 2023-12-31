@@ -62,6 +62,7 @@ class Quoter:
             return []                              
 
     def load_unique_tokens(self):
+        print("load_unique_tokens")
         all_tokens = []
         to_skip = 0
 
@@ -79,6 +80,7 @@ class Quoter:
             json.dump(all_tokens, f)
 
         df = pd.DataFrame(all_tokens)
+        print("end load_unique_tokens")
         return df
 
     def update_unique_tokens(self):
@@ -96,8 +98,8 @@ class Quoter:
 
         self._update_batches()
 
-    #def encode_txs(self, fee=10000):
-    def encode_txs(self, fee=3000):
+    def encode_txs(self, fee=10000):
+    #def encode_txs(self, fee=3000):
         """
         Encodes all the tx queries using pandas df operations
         """
@@ -181,8 +183,8 @@ class Quoter:
             print("len batch", len(batch))
 
             headers = {'Content-Type': 'application/json', 'Accept':'application/json'}    
-            #r = requests.post(self.http_url, json=batch, headers=headers)
-            r = requests.post(self.http_url, data=json.dumps(batch), headers=headers)
+            r = requests.post(self.http_url, json=batch, headers=headers)
+            #r = requests.post(self.http_url, data=json.dumps(batch), headers=headers)
 
             print("r: ", r.json())
             print("r.status_code: ", r.status_code)
