@@ -17,6 +17,7 @@ class Quoter:
     http_url = constants.HTTP_URL
 
     def __init__(self, w3):
+        print("__init__")
         self.w3 = w3
 
         with open("abis/quoter_abi.json") as jfile:
@@ -29,6 +30,7 @@ class Quoter:
         self.df = self.load_unique_tokens()
 
     def _single_fetch(self, to_skip: int) -> set:
+        print("_single_fetch")
         """
         Fetch single graphQL data response
         """
@@ -42,11 +44,12 @@ class Quoter:
             headers = {"Content-Type": "application/json"}
             )
         
+        #print("r.status_code: ", r.status_code)    
         if r.status_code == 200:
             for t in r.json()["data"]["tokens"]:
 
-                if t["id"] == "0xfca59cd816ab1ead66534d82bc21e7515ce441cf":
-                    print("RARI XX:", self.w3.to_checksum_address(t["id"]) )    
+                #if t["id"] == "0xfca59cd816ab1ead66534d82bc21e7515ce441cf":
+                #    print("RARI XX:", self.w3.to_checksum_address(t["id"]) )    
 
                 all_tokens.append(
                     Token(
@@ -69,12 +72,13 @@ class Quoter:
         r = self._single_fetch(to_skip)
         all_tokens = all_tokens + r
 
-        while len(r) == 1000:
+        #while len(r) == 1000:
         #print(to_skip)
-        #while to_skip == 5000:
-            to_skip += 1000
-            r = self._single_fetch(to_skip)
-            all_tokens = all_tokens + r
+        # while to_skip < 500:
+        #     print("****** ", to_skip)
+        #     to_skip += 500
+        #     r = self._single_fetch(to_skip)
+        #     all_tokens = all_tokens + r
 
         with open('emre.json', 'w') as f:
             json.dump(all_tokens, f)
@@ -84,14 +88,24 @@ class Quoter:
         return df
 
     def update_unique_tokens(self):
+        print("update_unique_tokens") 
         self.df = self.load_unique_tokens()
 
     def _update_batches(self):
+        print("_update_batches")  
         self.batches = [self.call_list[i:i + 2000] for i in range(0, len(self.call_list), 2000)]
         with open('batches.json', 'w') as f:
             json.dump(self.batches, f)
 
+        #with open("batches2.json", 'w') as file_handler:
+        #    for item in self.batches:
+        #        file_handler.write("{}\n".format(item))
+        
+        #with open('batches2.txt', 'w') as out_file:
+        #    json.dump(self.batches, out_file, sort_keys = True, indent = 4, ensure_ascii = False)
+
     def _update_call_list(self):
+        print("_update_call_list")  
         self.call_list = self.df["rpc_in"].tolist() + self.df["rpc_out"].tolist()
         with open('call_list.json', 'w') as f:
             json.dump(self.call_list, f)
@@ -99,6 +113,7 @@ class Quoter:
         self._update_batches()
 
     def encode_txs(self, fee=10000):
+        print("encode_txs")  
     #def encode_txs(self, fee=3000):
         """
         Encodes all the tx queries using pandas df operations
@@ -118,17 +133,17 @@ class Quoter:
         )._encode_transaction_data()
         )
 
-        orhan_1 = self.contract.functions.quoteExactInputSingle(
-            self.WETH, '0x10633216E7E8281e33c86F02Bf8e565a635D9770', fee, self.ETH_SIZE, 0
-        ).call()
-        print("ORHAN 1: ", orhan_1)
-        print("orhan_1:", (orhan_1/(10**18)))
+        # orhan_1 = self.contract.functions.quoteExactInputSingle(
+        #     self.WETH, '0x10633216E7E8281e33c86F02Bf8e565a635D9770', fee, self.ETH_SIZE, 0
+        # ).call()
+        # print("ORHAN 1: ", orhan_1)
+        # print("orhan_1:", (orhan_1/(10**18)))
 
-        orhan_2= self.contract.functions.quoteExactOutputSingle(
-            '0x10633216E7E8281e33c86F02Bf8e565a635D9770', self.WETH, fee, self.ETH_SIZE, 0
-        ).call()
-        print("ORHAN 2: ", orhan_2)
-        print("orhan 2", (orhan_2/(10**18)))
+        # orhan_2= self.contract.functions.quoteExactOutputSingle(
+        #     '0x10633216E7E8281e33c86F02Bf8e565a635D9770', self.WETH, fee, self.ETH_SIZE, 0
+        # ).call()
+        # print("ORHAN 2: ", orhan_2)
+        # print("orhan 2", (orhan_2/(10**18)))
 
         encoded_in = self.df["encoded_in"].to_json('./encoded_in.json', orient='index')
 
@@ -173,25 +188,34 @@ class Quoter:
         self._update_call_list()
 
     def get_prices(self):
+        print("get_prices")   
         prices = self.df.copy()
 
         all_r = []
 
         for batch in self.batches:
             print("self.http_url: ", self.http_url)
-            #print("batch", batch)
-            print("len batch", len(batch))
+            #print("batch: ", batch)
+            #print("len batch: ", len(batch))
 
             headers = {'Content-Type': 'application/json', 'Accept':'application/json'}    
             r = requests.post(self.http_url, json=batch, headers=headers)
+            #r = requests.post(self.http_url, data=open('batches2.txt', 'rb'), headers=headers)
             #r = requests.post(self.http_url, data=json.dumps(batch), headers=headers)
 
-            print("r: ", r.json())
+            #with open('batches.json') as json_file:
+            #    json_data = json.load(json_file)
+            #    print("XXX", json_data)
+
+            #r = requests.post(self.http_url, data=json.dumps(json_data), headers=headers)
+            #r = requests.post(self.http_url, data=json.dumps(json_data), headers=headers)
+
+            #print("r: ", r.json())
             print("r.status_code: ", r.status_code)
             if r.status_code == 200:
                 all_r = all_r + r.json()
 
-                print("all_r len : ", all_r)
+                #print("all_r len : ", all_r)
             else:
                 print("HTTPError ", HTTPError)
                 raise(HTTPError)
@@ -207,11 +231,11 @@ class Quoter:
         # with open('orhan.json', 'w') as f:
         #    json.dump(r_df, f)
 
-        with open("Output.txt", "w") as text_file:
-            text_file.write(prices.to_string()) 
+        # with open("Output.txt", "w") as text_file:
+        #     text_file.write(prices.to_string()) 
 
-        with open("dataframe.txt", "w") as text_file:
-            text_file.write(r_df.to_string()) 
+        # with open("dataframe.txt", "w") as text_file:
+        #     text_file.write(r_df.to_string()) 
 
         # if prices["address"] == "0x10633216e7e8281e33c86f02bf8e565a635d9770":
         #     print("OK OK OK")
@@ -229,11 +253,8 @@ class Quoter:
         #etokenToETHPrice = r_df["result"].iloc[-len(prices):].tolist().to_json('./tokenToETHPrice.json', orient='index')
 
         prices["ethToTokenPrice"] = r_df["result"].iloc[:len(prices)]
-        print("1111")
         prices["tokenToETHPrice"] = r_df["result"].iloc[-len(prices):].tolist()
-        print("2222")
         prices = prices.dropna(subset=["ethToTokenPrice"])
-        print("1")
         prices["tokenToETHPrice"] = prices["tokenToETHPrice"].fillna("0")
 
         prices["ethToTokenPrice"] = prices["ethToTokenPrice"].apply(lambda x: int(x, 16))
@@ -242,7 +263,6 @@ class Quoter:
         prices["decimals"] = prices["decimals"].astype("int64")
 
         prices["ethToTokenPrice"] = prices["ethToTokenPrice"] / 10 ** prices["decimals"]
-        print("2")
         def handle_zeros_1(row):
             if row["tokenToETHPrice"] == 0:
                 return 0
@@ -254,7 +274,6 @@ class Quoter:
         )
 
         #prices["ethToTokenPrice"] = 1 / prices["ethToTokenPrice"] 
-        print("3")
         def handle_zeros_2(row):
             if row["tokenToETHPrice"] == 0:
                 return 0
@@ -264,8 +283,7 @@ class Quoter:
         prices["tokenToETHPrice"] = prices.apply(
             handle_zeros_2, axis=1
         )
-        print("4")
-        print("XXXX: ", prices)
+        #print("4")
         self.prices = prices
 
     def dump_to_API_format(self):

@@ -5,7 +5,8 @@ from requests.models import HTTPError
 
 #TARGET_URL = "https://httpbin.org/anything"
 
-TARGET_URL = "http://18.198.16.101:3001/uniswap/v3"
+#TARGET_URL = "http://18.198.16.101:3001/uniswap/v3"
+TARGET_URL = "http://localhost:3001/uniswap/v3"
 
 HEADER = {"Authorization": "Basic YXBpdXNlcjpTMjAyMVRlcCFfenp0"}
 
