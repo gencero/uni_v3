@@ -14,7 +14,7 @@ w3 = Web3(Web3.HTTPProvider(HTTP_URL))
 print("point b")
 
 q = quoter.Quoter(w3)
-#q.load_unique_tokens()
+q.load_unique_tokens()
 q.encode_txs()
 
 print("point c")

@@ -3,6 +3,9 @@ from web3 import Web3
 import json
 import requests
 import pandas as pd
+import eth_abi.packed
+import eth_abi
+
 
 import constants
 import gql_queries
@@ -15,6 +18,14 @@ class Quoter:
     ETH_SIZE = constants.ETH_SIZE
     WETH = constants.WETH_ADDRESS
     http_url = constants.HTTP_URL
+
+    UNISWAP_FACTORY_ADDRESS = "0x1F98431c8aD98523631AE4a59f267346ea31F984" 
+
+    with open("./abis/UniswapV3Factory.json", "r") as f:
+        uniswap_factory_abi = json.loads(f.read())
+
+    with open("./abis/UniswapV3Pool.json", "r") as f:
+        uniswap_pool_abi = json.loads(f.read())
 
     def __init__(self, w3):
         print("__init__")
@@ -84,6 +95,9 @@ class Quoter:
             json.dump(all_tokens, f)
 
         df = pd.DataFrame(all_tokens)
+
+        # data = df.to_json('./self_df.json', orient='index')
+
         print("end load_unique_tokens")
         return df
 
@@ -93,7 +107,9 @@ class Quoter:
 
     def _update_batches(self):
         print("_update_batches")  
-        self.batches = [self.call_list[i:i + 2000] for i in range(0, len(self.call_list), 2000)]
+        # self.batches = [self.call_list[i:i + 2000] for i in range(0, len(self.call_list), 2000)]
+        self.batches = [self.call_list[i:i + 1000] for i in range(0, len(self.call_list), 1000)]
+
         with open('batches.json', 'w') as f:
             json.dump(self.batches, f)
 
@@ -112,7 +128,37 @@ class Quoter:
 
         self._update_batches()
 
-    def encode_txs(self, fee=10000):
+    def get_pool_address(self, token0_address, token1_address, fee):
+        factory = self.w3.eth.contract(address = self.UNISWAP_FACTORY_ADDRESS , abi = self.uniswap_factory_abi)
+
+        pool_address = factory.functions.getPool(token0_address, token1_address, fee).call()
+
+        print("***** pool_address: ", pool_address)
+
+        return pool_address
+        # print("token0_address ", token0_address)
+        # pool_address = self.contract.functions.getPool(token0_address, token1_address, fee).call()
+        # print("pool_address: ", pool_address)
+        # return pool_address
+    
+    def get_sqrt_price(self, pool_address):
+        pool_contract = self.w3.eth.contract(address = pool_address , abi = self.uniswap_pool_abi)
+
+        slot0 = pool_contract.functions.slot0().call()
+        print(slot0)
+        sqrtPriceX96 = slot0[0]
+
+        return sqrtPriceX96
+
+    def calc_price_with_sqrt(self, sqrtPrice, decimal0, decimal1):
+        diff_decimals = decimal1-decimal0
+
+        price = sqrtPrice **2 / 2**192
+        print("USDC/ETH: ", price / 10**(diff_decimals))
+        price = 1/price * 10**diff_decimals
+        print("**** price: ", price)
+
+    def encode_txs(self, fee=3000):
         print("encode_txs")  
     #def encode_txs(self, fee=3000):
         """
@@ -127,23 +173,31 @@ class Quoter:
             self.WETH, self.df["address"], fee, self.ETH_SIZE, 0
         )._encode_transaction_data()
         """
+        # print("self.WETH: ", self.WETH)
         self.df["encoded_in"] = self.df["address"].apply(
             lambda x: self.contract.functions.quoteExactInputSingle(
             self.WETH, x, fee, self.ETH_SIZE, 0
         )._encode_transaction_data()
         )
 
-        # orhan_1 = self.contract.functions.quoteExactInputSingle(
-        #     self.WETH, '0x10633216E7E8281e33c86F02Bf8e565a635D9770', fee, self.ETH_SIZE, 0
-        # ).call()
-        # print("ORHAN 1: ", orhan_1)
-        # print("orhan_1:", (orhan_1/(10**18)))
+        # self.df["encoded_in"] = self.df["address"].apply(
+        #     lambda x: self.contract.functions.quoteExactInput(
+        #     eth_abi.packed.encode_packed(['address','uint24','address'], [self.WETH, fee, x]), self.ETH_SIZE
+        # )._encode_transaction_data()
+        # )
 
-        # orhan_2= self.contract.functions.quoteExactOutputSingle(
-        #     '0x10633216E7E8281e33c86F02Bf8e565a635D9770', self.WETH, fee, self.ETH_SIZE, 0
-        # ).call()
-        # print("ORHAN 2: ", orhan_2)
-        # print("orhan 2", (orhan_2/(10**18)))
+        # path = eth_abi.packed.encode_packed(['address','uint24','address'], [self.WETH, 3000, self.quoter_address])
+        
+        # path = eth_abi.encode(['address','uint24','address'],[self.WETH, 3000, self.quoter_address])
+        # print("path: ", path)
+
+        # print("decode: ", eth_abi.decode(['address','uint24','address'],path))
+
+        # pool_adr = self.get_pool_address('0x514910771AF9Ca656af840dff83E8264EcF986CA', self.WETH, 3000)
+        # print("**** pool_adr: ", pool_adr)
+        # sqrtPrice = self.get_sqrt_price(pool_adr)
+        # print("**** sqrtPrice: ", sqrtPrice)
+        # self.calc_price_with_sqrt(sqrtPrice, 18, 18)
 
         encoded_in = self.df["encoded_in"].to_json('./encoded_in.json', orient='index')
 
@@ -152,6 +206,33 @@ class Quoter:
             x, self.WETH, fee, self.ETH_SIZE, 0
         )._encode_transaction_data()
         )
+
+        # self.df["encoded_out"] = self.df["address"].apply(
+        #     lambda x: self.contract.functions.quoteExactOutput(
+        #     eth_abi.packed.encode_packed(['address','uint24','address'], [x, fee, self.WETH]), self.ETH_SIZE
+        # )._encode_transaction_data()
+        # )
+
+        #pool adresini df'ye alabiliyoruz bu şekilde.
+        # self.df["pool_address"] = self.df["address"].apply(
+        #     lambda x: self.contract.functions.getPool(
+        #         x, self.WETH, 10000
+        # )._encode_transaction_data()
+        # )
+
+        # const decoded = web3.eth.abi.decodeParameters(
+        # // Decoding event data. Exclude the `indexed` parameters.
+        # ["address", "uint256", "uint256", "uint16", "address"],
+        # removeFunctionSelector(data)
+        # );
+
+        # self.df["slot0"] = self.df["pool_address"].apply(
+        #     lambda x: self.contract.functions.slot0(
+        #         self.contract(address = x , abi = self.abi)
+        # )._encode_transaction_data()
+        # )
+
+        
 
         encoded_out = self.df["encoded_out"].to_json('./encoded_out.json', orient='index')
 
@@ -242,27 +323,44 @@ class Quoter:
         # else:
         #     print("NOK")
 
-        # if prices["address"] == "0xFca59Cd816aB1eaD66534D82bc21E7515cE441CF":
-        #     print("OK 2")
-        # else:
-        #     print("NOK 2")
-
         print("len : ", len(prices))
 
         #ethToTokenPrice = r_df["result"].iloc[:len(prices)].to_json('./ethToTokenPrice.json', orient='index')
         #etokenToETHPrice = r_df["result"].iloc[-len(prices):].tolist().to_json('./tokenToETHPrice.json', orient='index')
 
+        data = prices.to_json('./prices.json', orient='index')
+        data = r_df.to_json('./r_df.json', orient='index')
+
+        # print("XX ", r_df["result"].iloc[:len(prices)])
+
+        # print("YY ", r_df["result"].iloc[-len(prices):])
+
         prices["ethToTokenPrice"] = r_df["result"].iloc[:len(prices)]
         prices["tokenToETHPrice"] = r_df["result"].iloc[-len(prices):].tolist()
+
+        # data = prices.to_json('./prices2.json', orient='index')
+
         prices = prices.dropna(subset=["ethToTokenPrice"])
+
+        # data = prices.to_json('./prices3.json', orient='index')
+
         prices["tokenToETHPrice"] = prices["tokenToETHPrice"].fillna("0")
+
+        # data = prices.to_json('./prices4.json', orient='index')
 
         prices["ethToTokenPrice"] = prices["ethToTokenPrice"].apply(lambda x: int(x, 16))
         prices["tokenToETHPrice"] = prices["tokenToETHPrice"].apply(lambda x: int(x, 16))
 
+        # data = prices.to_json('./prices5.json', orient='index')
+
         prices["decimals"] = prices["decimals"].astype("int64")
 
+        # data = prices.to_json('./prices6.json', orient='index')
+
         prices["ethToTokenPrice"] = prices["ethToTokenPrice"] / 10 ** prices["decimals"]
+
+        # data = prices.to_json('./prices7.json', orient='index')
+
         def handle_zeros_1(row):
             if row["tokenToETHPrice"] == 0:
                 return 0
@@ -284,10 +382,14 @@ class Quoter:
             handle_zeros_2, axis=1
         )
         #print("4")
+
+        # data = prices.to_json('./prices_last.json', orient='index')
+
         self.prices = prices
 
     def dump_to_API_format(self):
         print("dump_to_API_format")    
+        # target_cols = ["name", "symbol", "address", "ethToTokenPrice", "tokenToETHPrice", "decimals", "pool_address"]
         target_cols = ["name", "symbol", "address", "ethToTokenPrice", "tokenToETHPrice", "decimals"]
 
         out = self.prices[target_cols]
